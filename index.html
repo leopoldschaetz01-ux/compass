@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Compass Hotelsuche</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: Booking-artige Ergebnisseite – Kopfband in Compass-Petrol, Filterspalte links, Ergebniskarten rechts; Detailseite mit Galerie + Zimmertabelle. Bewusst helles Einzel-Theme wie das Vorbild. */
+:root {
+  color-scheme: light;
+  --brand: #0f4b57;        /* Kopfband */
+  --brand-2: #155f6d;      /* Buttons */
+  --brand-ink: #0b6b80;    /* Links */
+  --accent: #f08a3e;       /* Suchleisten-Rahmen, Sterne */
+  --score: #1f4e3d;        /* Bewertungsquadrat */
+  --ok: #0f7a3a;           /* Ausstattung, Haken */
+  --warn-bg: #fdecec; --warn: #c3161c;
+  --good-bg: #e6f5ea; --good: #0f6b33;
+  --info-bg: #e6f1f8; --info: #13557a;
+  --bg: #ffffff; --bg-soft: #f4f6f7; --line: #dde3e6; --fg: #1a2227; --muted: #59656c;
+  --radius: 8px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+a { color: var(--brand-ink); }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Kopfband */
+.top { background: var(--brand); color: #fff; }
+.top .wrap { padding-block: 14px 0; }
+.bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 8px; font-size: 28px; font-weight: 600; letter-spacing: .2px; color: #fff; background: none; border: 0; padding: 0; }
+.logo svg { width: 26px; height: 26px; }
+.bar .spacer { flex: 1; }
+.bar .meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ghost { background: none; border: 0; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 14px; }
+.ghost:hover { background: rgba(255,255,255,.12); }
+.flag { width: 22px; height: 15px; border-radius: 2px; display: inline-block; background: linear-gradient(#111 0 33%, #d00 33% 66%, #fc0 66%); vertical-align: middle; }
+.wbtn { background: #fff; color: var(--brand); border: 1px solid #fff; padding: 7px 12px; border-radius: 4px; font-weight: 600; font-size: 14px; }
+.nav { display: flex; gap: 6px; padding-block: 14px 18px; overflow-x: auto; scrollbar-width: none; }
+.nav button { display: flex; align-items: center; gap: 8px; white-space: nowrap; background: none; color: #fff; border: 1px solid transparent; border-radius: 999px; padding: 9px 14px; font-size: 14px; }
+.nav button.on { border-color: #fff; background: rgba(255,255,255,.1); }
+.nav button:hover { background: rgba(255,255,255,.12); }
+.nav svg { width: 18px; height: 18px; }
+
+/* Suchleiste */
+.search { position: relative; margin-top: -26px; }
+.search form { display: grid; grid-template-columns: 1.4fr 1.3fr 1.2fr auto; gap: 4px; background: var(--accent); padding: 4px; border-radius: 10px; }
+.search .fld { background: #fff; border-radius: 6px; display: flex; align-items: center; gap: 10px; padding: 12px 12px; min-width: 0; font-size: 15px; color: var(--fg); border: 0; text-align: left; }
+.search .fld span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search .fld svg { flex: none; width: 20px; height: 20px; color: var(--muted); }
+.search .go { background: var(--brand-2); color: #fff; border: 0; border-radius: 6px; padding: 0 22px; font-size: 17px; font-weight: 600; }
+
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; margin: 16px 0 10px; color: var(--muted); }
+.crumbs button { background: none; border: 0; padding: 0; color: var(--brand-ink); font-size: 12.5px; }
+
+/* Ergebnis-Layout */
+.results { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 18px; align-items: start; padding-bottom: 40px; }
+.side { display: grid; gap: 14px; }
+.mapbox { border-radius: var(--radius); overflow: hidden; position: relative; border: 1px solid var(--line); height: 150px; }
+.mapbox svg { display: block; width: 100%; height: 100%; }
+.mapbox button { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); background: var(--brand-2); color: #fff; border: 0; border-radius: 6px; padding: 8px 12px; font-weight: 600; font-size: 13px; display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.filters { border: 1px solid var(--line); border-radius: var(--radius); }
+.filters h3 { font-size: 15px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.fgroup { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.fgroup:last-child { border-bottom: 0; }
+.fgroup h4 { margin: 0 0 8px; font-size: 14px; }
+.hist { display: flex; align-items: flex-end; gap: 2px; height: 38px; margin: 8px 0 4px; }
+.hist i { flex: 1; background: #c9d3d7; border-radius: 1px 1px 0 0; }
+.range { position: relative; height: 18px; }
+.range::before { content: ""; position: absolute; left: 6px; right: 6px; top: 8px; height: 3px; background: var(--brand-2); border-radius: 2px; }
+.range b { position: absolute; top: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--brand-2); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--brand-2); }
+.chk { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; font-size: 14px; }
+.chk label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.chk input { width: 17px; height: 17px; accent-color: var(--brand-2); }
+.chk .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.head h1 { font-size: 22px; margin: 0; text-wrap: balance; }
+.sort { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; display: flex; gap: 6px; align-items: center; color: var(--fg); }
+.list { display: grid; gap: 14px; }
+
+/* Ergebniskarte */
+.card { display: grid; grid-template-columns: 210px minmax(0,1fr) 190px; gap: 16px; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: #fff; }
+.card .ph { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 1 / 1; max-width: 100%; background: var(--bg-soft); border: 0; padding: 0; }
+.card .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.heart { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 0; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.heart svg { width: 18px; height: 18px; }
+.mid { min-width: 0; display: grid; gap: 4px; align-content: start; }
+.name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.name button { background: none; border: 0; padding: 0; text-align: left; color: var(--brand-ink); font-size: 20px; font-weight: 700; line-height: 1.2; }
+.name button:hover { text-decoration: underline; }
+.stars { color: var(--accent); letter-spacing: 1px; font-size: 14px; }
+.loc { font-size: 13px; color: var(--fg); }
+.loc button { background: none; border: 0; padding: 0; color: var(--brand-ink); text-decoration: underline; font-size: 13px; }
+.room { margin-top: 8px; font-size: 13.5px; }
+.room b { font-weight: 700; }
+.amen { color: var(--ok); font-size: 13.5px; display: grid; gap: 2px; margin-top: 4px; }
+.amen div::before { content: "✓"; display: inline-block; width: 18px; font-weight: 700; }
+.badge { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-top: 6px; width: fit-content; max-width: 100%; }
+.badge svg { width: 14px; height: 14px; flex: none; }
+.b-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #f3b9bb; }
+.b-good { background: var(--good-bg); color: var(--good); }
+.b-info { background: var(--info-bg); color: var(--info); }
+.right { display: grid; align-content: space-between; justify-items: end; gap: 10px; text-align: right; }
+.score { display: flex; gap: 8px; align-items: center; }
+.score .lbl { font-weight: 700; font-size: 15px; line-height: 1.1; }
+.score .cnt { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.score .sq { background: var(--score); color: #fff; font-weight: 700; border-radius: 6px 6px 6px 0; min-width: 34px; height: 34px; display: grid; place-items: center; font-size: 15px; }
+.price { display: grid; justify-items: end; gap: 2px; }
+.price .stay { font-size: 12px; color: var(--muted); }
+.price .row { display: flex; align-items: baseline; gap: 8px; }
+.price .old { color: var(--warn); text-decoration: line-through; font-size: 14px; }
+.price .now { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.price .tax { font-size: 12px; color: var(--muted); }
+.save { font-size: 12px; color: var(--ok); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.save em { font-style: normal; background: var(--ok); color: #fff; border-radius: 4px; padding: 1px 5px; }
+.cta { background: var(--brand-2); color: #fff; border: 0; border-radius: 6px; padding: 10px 14px; font-weight: 600; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.cta:hover { background: var(--brand); }
+.more { text-align: center; margin-top: 6px; }
+.more button { background: #fff; border: 1px solid var(--brand-2); color: var(--brand-2); border-radius: 6px; padding: 10px 18px; font-weight: 600; }
+
+/* Detailseite */
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; margin-bottom: 14px; }
+.tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 14px; white-space: nowrap; font-size: 14px; color: var(--fg); }
+.tabs button.on { border-bottom-color: var(--brand-ink); color: var(--brand-ink); font-weight: 600; }
+.dhead { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: start; }
+.dhead h1 { margin: 2px 0 4px; font-size: 26px; text-wrap: balance; }
+.dhead .actions { display: flex; gap: 8px; align-items: center; }
+.gallery { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; margin: 14px 0; height: 360px; }
+.gallery button { border: 0; padding: 0; border-radius: 6px; overflow: hidden; background: var(--bg-soft); }
+.gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery button:first-child { grid-row: 1 / 3; }
+.dgrid { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 20px; align-items: start; }
+.box { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.box h3 { margin: 0 0 8px; font-size: 16px; }
+.sub { display: grid; gap: 6px; margin-top: 10px; }
+.sub div { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 13px; }
+.sub i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: #e3e8ea; position: relative; overflow: hidden; }
+.sub i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--brand-2); }
+.quote { margin-top: 12px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
+.desc p { margin: 0 0 10px; max-width: 68ch; }
+.facil { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 18px; }
+.facil span { border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.facil svg { width: 16px; height: 16px; color: var(--ok); }
+h2.sec { font-size: 20px; margin: 22px 0 10px; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+th { background: var(--brand-2); color: #fff; text-align: left; font-weight: 600; padding: 10px 12px; }
+td { border-top: 1px solid var(--line); padding: 12px; vertical-align: top; }
+td .room-t { color: var(--brand-ink); font-weight: 700; font-size: 15px; text-decoration: underline; }
+td ul { margin: 6px 0 0; padding: 0; list-style: none; color: var(--ok); display: grid; gap: 2px; }
+td ul li::before { content: "✓ "; font-weight: 700; }
+.people { display: flex; gap: 2px; }
+.people svg { width: 16px; height: 16px; }
+.reserve { display: grid; gap: 8px; justify-items: start; }
+.reserve .cta { padding: 11px 18px; font-size: 15px; }
+.small { font-size: 12px; color: var(--muted); }
+.rules { display: grid; gap: 8px; font-size: 13.5px; }
+.rules div { display: grid; grid-template-columns: 160px 1fr; gap: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+
+/* Studienseiten */
+.study { background: var(--bg-soft); min-height: 100%; padding-block: 28px 48px; }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 24px; max-width: 760px; margin: 0 auto; display: grid; gap: 16px; }
+.panel h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+.panel h2 { font-size: 17px; margin: 0; }
+.panel p { margin: 0; max-width: 68ch; }
+.tag { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-ink); font-weight: 700; }
+.scen { background: var(--info-bg); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; }
+.scen dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 6px 0 0; font-size: 13.5px; }
+.scen dt { color: var(--muted); }
+.scen dd { margin: 0; font-weight: 600; }
+.consent { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 13.5px; max-height: 200px; overflow: auto; display: grid; gap: 8px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--brand-2); flex: none; }
+.q { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 16px; }
+.q > label, .q > .qt { font-weight: 600; }
+.q .hint { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+textarea, input[type=text], select { font: inherit; width: 100%; border: 1px solid #b9c4c8; border-radius: 6px; padding: 10px 12px; background: #fff; color: var(--fg); }
+textarea { min-height: 96px; resize: vertical; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts label { display: flex; gap: 8px; align-items: center; border: 1px solid #b9c4c8; border-radius: 6px; padding: 9px 12px; cursor: pointer; }
+.opts input { accent-color: var(--brand-2); }
+.likert { overflow-x: auto; }
+.likert table { min-width: 520px; }
+.likert th { background: var(--bg-soft); color: var(--fg); font-weight: 600; text-align: center; font-size: 12.5px; padding: 8px 4px; }
+.likert th:first-child { text-align: left; }
+.likert td { text-align: center; padding: 10px 4px; }
+.likert td:first-child { text-align: left; font-weight: 600; }
+.likert input { width: 18px; height: 18px; accent-color: var(--brand-2); }
+.err { color: var(--warn); font-size: 13px; font-weight: 600; }
+.chosen { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.chosen img { border-radius: 6px; aspect-ratio: 1; object-fit: cover; width: 96px; }
+.pbtn { justify-self: start; }
+.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; font-weight: 700; letter-spacing: .08em; background: var(--bg-soft); padding: 8px 12px; border-radius: 6px; width: fit-content; }
+details { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; }
+details textarea { min-height: 200px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; margin-top: 8px; }
+
+footer { border-top: 1px solid var(--line); background: var(--bg-soft); }
+footer .wrap { padding-block: 22px; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; }
+footer button { background: none; border: 0; padding: 0; color: var(--brand-ink); font-size: 13px; }
+footer .copy { width: 100%; color: var(--muted); font-size: 12px; }
+
+#toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: #22313a; color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 13.5px; z-index: 50; max-width: calc(100% - 32px); box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+
+@media (max-width: 900px) {
+  .results { grid-template-columns: 1fr; }
+  .side { display: none; }
+  .card { grid-template-columns: 150px minmax(0,1fr); }
+  .card .right { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: end; justify-items: stretch; text-align: left; }
+  .card .right .price { justify-items: end; text-align: right; }
+  .card .right .score { grid-column: 1 / -1; justify-content: flex-end; }
+  .dgrid { grid-template-columns: 1fr; }
+  .search form { grid-template-columns: 1fr 1fr; }
+  .search .fld:first-child { grid-column: 1 / -1; }
+  .search .go { grid-column: 1 / -1; padding: 12px; }
+}
+@media (max-width: 560px) {
+  .card { grid-template-columns: 110px minmax(0,1fr); gap: 12px; padding: 10px; }
+  .name button { font-size: 17px; }
+  .gallery { grid-template-columns: 1fr 1fr; grid-template-rows: 2fr 1fr; height: 300px; }
+  .gallery button:first-child { grid-column: 1 / -1; grid-row: auto; }
+  .gallery button:nth-child(n+4) { display: none; }
+  .search form { grid-template-columns: 1fr; }
+  .bar .meta .hide-s { display: none; }
+  .rules div { grid-template-columns: 1fr; }
+  .panel { padding: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<div id="app"></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+window.__cfgFehler = null;
+window.addEventListener("error", function (e) {
+  if (e.filename && /einstellungen\.js/.test(e.filename)) window.__cfgFehler = "Zeile " + e.lineno + ": " + e.message;
+});
+</script>
+<script src="einstellungen.js"></script>
+<script>
+if (!window.CONFIG) {
+  document.getElementById("app").innerHTML = '<div class="wrap" style="padding-block:40px"><div class="panel" style="border-color:#f3b9bb"><span class="tag" style="color:#c3161c">Fehler in den Einstellungen</span><h1>Die Datei einstellungen.js konnte nicht gelesen werden</h1><p>' +
+    (window.__cfgFehler ? "Fehler in " + window.__cfgFehler.replace(/[<>&]/g, "") + "." : "Die Datei fehlt oder liegt nicht im selben Ordner wie index.html.") +
+    '</p><p class="small">Häufige Ursachen: ein fehlendes Komma am Zeilenende, ein fehlendes Anführungszeichen oder eine Dezimalzahl mit Komma statt Punkt (8,6 statt 8.6).</p></div></div>';
+  throw new Error("CONFIG fehlt");
+}
+const CONFIG = window.CONFIG;
+
+/* ===================== Zustand & Parameter ===================== */
+const P = new URLSearchParams(location.search);
+const num = (k, d, max) => { const v = parseInt(P.get(k), 10); return v >= 1 && v <= max ? v : d; };
+const S0 = CONFIG.standard;
+const PARAMS = {
+  gruppe: (P.get("gruppe") === "zwilling") ? "zwilling" : S0.gruppe,
+  persona: (P.get("persona") || "").slice(0, 20),
+  variante: num("variante", S0.variante, 2),
+  zuordnung: num("zuordnung", S0.zuordnung, 4),
+  reihenfolge: num("reihenfolge", S0.reihenfolge, 2)
+};
+const store = {
+  get() { try { return JSON.parse(sessionStorage.getItem("compass-state") || "null"); } catch (e) { return null; } },
+  set(v) { try { sessionStorage.setItem("compass-state", JSON.stringify(v)); } catch (e) {} }
+};
+let S = store.get();
+if (!S || S.paramsKey !== JSON.stringify(PARAMS)) {
+  S = { id: Math.random().toString(36).slice(2, 8).toUpperCase(), start: Date.now(), paramsKey: JSON.stringify(PARAMS),
+        einwilligung: false, wahl: null, antworten: null, log: [], gesendet: false };
+}
+const save = () => store.set(S);
+function log(typ, ziel, extra) {
+  const e = { t: Date.now() - S.start, typ, ziel: ziel || "", seite: currentRoute() };
+  if (extra) Object.assign(e, extra);
+  S.log.push(e); save();
+}
+
+/* Trigger an Hotels zuordnen, Reihenfolge festlegen */
+const rot = (arr, k) => arr.map((_, i) => arr[(i + k) % arr.length]);
+const triggerOf = {};
+rot(CONFIG.trigger, PARAMS.zuordnung - 1).forEach((t, i) => { triggerOf[CONFIG.testHotels[i].id] = t; });
+const testOrder = PARAMS.reihenfolge === 2 ? [...CONFIG.testHotels].reverse() : CONFIG.testHotels;
+const ALL = [...testOrder, ...CONFIG.fuellHotels];
+const byId = Object.fromEntries(ALL.map(h => [h.id, h]));
+
+/* ===================== Hilfen ===================== */
+const eur = n => n.toLocaleString("de-DE") + " €";
+const fmtNote = n => n.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const label = n => n >= 9 ? "Hervorragend" : n >= 8 ? "Sehr gut" : n >= 7 ? "Gut" : "Okay";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const stars = n => "★".repeat(n);
+const R = CONFIG.reise;
+const stayTxt = `${R.naechte} Nächte, ${R.erwachsene} Erwachsene`;
+
+function rng(seed) { let s = seed * 9301 + 49297; return () => (s = (s * 9301 + 49297) % 233280) / 233280; }
+
+/* Platzhalter-Fotos (gleicher Stil für alle Hotels) */
+function scene(kind, seed) {
+  const r = rng(seed + kind.length * 7), W = 480, H = 360;
+  const palm = (x, y, s) => {
+    let p = `<path d="M${x} ${y} q ${-8*s} ${-60*s} ${4*s} ${-120*s}" stroke="#5b4630" stroke-width="${6*s}" fill="none" stroke-linecap="round"/>`;
+    const tx = x + 4*s, ty = y - 120*s;
+    for (let i = 0; i < 6; i++) { const a = -150 + i * 55 + r() * 15;
+      p += `<ellipse cx="${tx}" cy="${ty}" rx="${38*s}" ry="${8*s}" fill="${i%2 ? '#2f7d43' : '#3d9152'}" transform="rotate(${a} ${tx} ${ty}) translate(${30*s} 0)"/>`; }
+    return p;
+  };
+  let b = "";
+  if (kind === "pool") {
+    b += `<defs><linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ec8ec"/><stop offset="1" stop-color="#dff2fa"/></linearGradient><linearGradient id="pw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3cc4d6"/><stop offset="1" stop-color="#1696b5"/></linearGradient></defs>`;
+    b += `<rect width="${W}" height="${H}" fill="url(#sk)"/>`;
+    b += `<polygon points="${120+r()*40},150 ${240+r()*30},95 ${360+r()*40},150" fill="#7a4b2c"/><rect x="${140+r()*30}" y="150" width="200" height="60" fill="#efe3cf"/><rect x="${170+r()*20}" y="165" width="26" height="30" fill="#5c3b25"/><rect x="${250+r()*20}" y="165" width="26" height="30" fill="#5c3b25"/>`;
+    b += `<rect y="205" width="${W}" height="155" fill="#e9dcc3"/>`;
+    b += `<path d="M${30+r()*20} 240 L${W-30} 236 L${W-10} 330 L10 334 Z" fill="url(#pw)"/>`;
+    for (let i = 0; i < 6; i++) b += `<path d="M${60+i*65} ${260+r()*50} q 15 -6 30 0" stroke="#bff0f6" stroke-width="2" fill="none"/>`;
+    for (let i = 0; i < 4; i++) b += `<rect x="${40+i*105+r()*10}" y="214" width="56" height="12" rx="3" fill="#fff"/><rect x="${40+i*105}" y="210" width="16" height="10" rx="2" fill="#f7f7f2"/>`;
+    b += palm(40 + r()*30, 230, 1.1) + palm(W - 60 - r()*30, 235, 1.2) + palm(W/2 + 40, 215, .7);
+  } else if (kind === "zimmer") {
+    b += `<rect width="${W}" height="${H}" fill="#f1e8da"/><rect y="250" width="${W}" height="110" fill="#b88a5c"/>`;
+    b += `<rect x="${290+r()*20}" y="50" width="140" height="120" fill="#bfe6f5" stroke="#8b6a48" stroke-width="8"/><line x1="${360+r()*10}" y1="50" x2="${360+r()*10}" y2="170" stroke="#8b6a48" stroke-width="5"/>`;
+    b += `<rect x="40" y="140" width="240" height="70" rx="6" fill="#7c5536"/><rect x="40" y="195" width="250" height="70" rx="8" fill="#fbfaf6"/><rect x="40" y="225" width="250" height="40" fill="#e8dfd0"/>`;
+    b += `<rect x="60" y="180" width="70" height="26" rx="10" fill="#fff"/><rect x="150" y="180" width="70" height="26" rx="10" fill="#fff"/><rect x="40" y="230" width="250" height="14" fill="${['#2f7d8c','#c66b3d','#3d6e4f'][seed%3]}" opacity=".7"/>`;
+    b += `<rect x="300" y="200" width="40" height="50" fill="#7c5536"/><path d="M320 150 l-14 30 h28 z" fill="#f4d9a6"/><line x1="320" y1="180" x2="320" y2="200" stroke="#555" stroke-width="3"/>`;
+  } else if (kind === "bad") {
+    b += `<rect width="${W}" height="${H}" fill="#e9ece8"/>`;
+    for (let y = 0; y < 240; y += 30) for (let x = 0; x < W; x += 40) b += `<rect x="${x+1}" y="${y+1}" width="38" height="28" fill="#f6f7f3"/>`;
+    b += `<rect y="240" width="${W}" height="120" fill="#c7b9a1"/><rect x="60" y="190" width="260" height="80" rx="30" fill="#fff" stroke="#d8d8d2" stroke-width="3"/>`;
+    b += `<rect x="340" y="150" width="100" height="18" rx="4" fill="#9a7650"/><ellipse cx="390" cy="146" rx="30" ry="8" fill="#fff"/><rect x="${370+r()*10}" y="60" width="44" height="70" rx="6" fill="#cfe6ee" stroke="#b5b5ad" stroke-width="3"/>`;
+    b += palm(30, 250, .45);
+  } else if (kind === "essen") {
+    b += `<rect width="${W}" height="${H}" fill="#cfe3d2"/><rect y="150" width="${W}" height="210" fill="#a87a4f"/>`;
+    const fr = ["#f2b134","#e2574c","#f08a3e","#7fb446","#f6d55c"];
+    [[120,230],[260,250],[380,220]].forEach(([x,y],i) => { b += `<ellipse cx="${x}" cy="${y}" rx="62" ry="34" fill="#fff"/>`; for (let k=0;k<5;k++) b += `<circle cx="${x-30+k*15+r()*6}" cy="${y-6+r()*10}" r="${9+r()*4}" fill="${fr[(k+i+seed)%5]}"/>`; });
+    b += `<rect x="330" y="140" width="34" height="40" rx="4" fill="#fff"/><rect x="334" y="144" width="26" height="12" fill="#6b3f22"/>`;
+    b += palm(40, 160, .6) + palm(W-40, 160, .55);
+  } else {
+    b += `<rect width="${W}" height="${H}" fill="#a9dcf2"/><rect y="230" width="${W}" height="130" fill="#6aa357"/>`;
+    b += `<polygon points="70,150 240,${70+r()*15} 410,150" fill="#6e4329"/><polygon points="110,110 240,${45+r()*10} 370,110" fill="#5c3822"/><rect x="100" y="150" width="280" height="90" fill="#f3e8d5"/>`;
+    for (let i = 0; i < 4; i++) b += `<rect x="${125+i*62}" y="172" width="34" height="42" fill="#4b2f1f"/>`;
+    b += `<path d="M220 240 L260 240 L300 360 L180 360 Z" fill="#d9c9a8"/>` + palm(40, 260, 1) + palm(W-50, 255, 1.1);
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">${b}</svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+const bildCache = {};
+function bilder(h) {
+  if (h.bilder && h.bilder.length) return h.bilder;
+  return bildCache[h.id] || (bildCache[h.id] = ["pool", "zimmer", "aussen", "bad", "essen"].map(k => scene(k, h.seed)));
+}
+
+/* Icons */
+const I = {
+  compass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9.5"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6z" fill="#f08a3e" stroke="#f08a3e"/></svg>',
+  bed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 18V7M3 13h18v5M21 13v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="10.5" r="1.8"/></svg>',
+  plane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 16l20-6-2-2-7 2-5-5-2 1 3 5-5 2-2-1-1 1z"/></svg>',
+  car: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 16v-4l2-5h12l2 5v4zM4 16v2M20 16v2"/><circle cx="7.5" cy="13" r="1"/><circle cx="16.5" cy="13" r="1"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3"/></svg>',
+  taxi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 17v-5l2-4h10l2 4v5zM9 8V6h6v2"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a2227" stroke-width="1.8"><path d="M12 20s-7.5-4.6-9.2-9.3C1.7 7.4 4 4.5 7.1 4.5c2 0 3.6 1.2 4.9 3 1.3-1.8 2.9-3 4.9-3 3.1 0 5.4 2.9 4.3 6.2C19.5 15.4 12 20 12 20z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1"/></svg>',
+  pool: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 18c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M7 15V5a2 2 0 0 1 4 0M13 15V5a2 2 0 0 1 4 0M7 9h6"/></svg>',
+  cup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 10h2a2 2 0 0 1 0 4h-2"/></svg>',
+  snow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M3 7l18 10M21 7 3 17"/></svg>',
+  shuttle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M3 11h18"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>',
+  sort: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>'
+};
+
+/* ===================== Trigger ===================== */
+const knappStart = () => CONFIG.triggerTexte.knappheit.v2.start;
+function timerText() {
+  const rest = Math.max(0, knappStart() - Math.floor((Date.now() - S.start) / 1000));
+  const p = n => String(n).padStart(2, "0");
+  return `${p(Math.floor(rest / 3600))}:${p(Math.floor(rest % 3600 / 60))}:${p(rest % 60)}`;
+}
+function trig(h) {
+  const t = triggerOf[h.id], v = "v" + PARAMS.variante, T = CONFIG.triggerTexte;
+  const out = { alt: null, spar: null, ref: null, badge: "", bewertungen: h.bewertungen, typ: t || "fuell" };
+  if (t === "anker") {
+    const c = T.anker[v];
+    if (PARAMS.variante === 1) {
+      out.alt = Math.round(h.preis * c.faktor / 1) ; out.spar = out.alt - h.preis;
+    } else {
+      out.ref = Math.round(h.preis * c.faktor / 5) * 5;
+      out.badge = `<div class="badge b-info" data-trigger="anker">${I.tag}${esc(c.text.replace("{ref}", out.ref))}</div>`;
+    }
+  } else if (t === "knappheit") {
+    const c = T.knappheit[v];
+    out.badge = PARAMS.variante === 1
+      ? `<div class="badge b-warn" data-trigger="knappheit">${I.clock}${esc(c.text)}</div>`
+      : `<div class="badge b-warn" data-trigger="knappheit">${I.clock}<span>${esc(c.text).replace("{timer}", `<span class="tmr">${timerText()}</span>`)}</span></div>`;
+  } else if (t === "socialproof") {
+    const c = T.socialproof[v];
+    if (PARAMS.variante === 1) out.bewertungen = c.bewertungen;
+    else out.badge = `<div class="badge b-good" data-trigger="socialproof">${I.people}${esc(c.text)}</div>`;
+  }
+  return out;
+}
+setInterval(() => document.querySelectorAll(".tmr").forEach(el => el.textContent = timerText()), 1000);
+
+function priceBlock(h, tr) {
+  return `<div class="price">
+    <span class="stay">${stayTxt}</span>
+    ${tr.spar ? `<span class="save"><em>−${Math.round(tr.spar / tr.alt * 100)} %</em>${esc(CONFIG.triggerTexte.anker.v1.text.replace("{spar}", tr.spar))}</span>` : ""}
+    <span class="row">${tr.alt ? `<span class="old">${eur(tr.alt)}</span>` : ""}<span class="now">${eur(h.preis)}</span></span>
+    <span class="tax">Inkl. Steuern und Gebühren</span>
+  </div>`;
+}
+
+/* ===================== Bausteine ===================== */
+function header(nav = true) {
+  return `<header class="top"><div class="wrap">
+    <div class="bar">
+      <button class="logo" data-go="liste" aria-label="Compass Startseite">Compass ${I.compass}</button>
+      <span class="spacer"></span>
+      <div class="meta">
+        <button class="ghost hide-s" data-off="Währung">EUR</button>
+        <button class="ghost hide-s" data-off="Sprache"><span class="flag" aria-label="Deutsch"></span></button>
+        <button class="ghost hide-s" data-off="Hilfe" aria-label="Hilfe">?</button>
+        <button class="ghost hide-s" data-off="Unterkunft registrieren">Ihre Unterkunft registrieren</button>
+        <button class="wbtn" data-off="Registrieren">Registrieren</button>
+        <button class="wbtn" data-off="Anmelden">Anmelden</button>
+      </div>
+    </div>
+    ${nav ? `<nav class="nav" aria-label="Kategorien">
+      <button class="on" data-off="Aufenthalte">${I.bed}Aufenthalte</button>
+      <button data-off="Flüge">${I.plane}Flüge</button>
+      <button data-off="Flug + Hotel">${I.plane}Flug + Hotel</button>
+      <button data-off="Mietwagen">${I.car}Mietwagen</button>
+      <button data-off="Aktivitäten">${I.star}Aktivitäten</button>
+      <button data-off="Flughafentransfers">${I.taxi}Flughafentransfers</button>
+    </nav>` : `<div style="height:44px"></div>`}
+  </div></header>`;
+}
+function searchBar() {
+  return `<div class="wrap search"><form onsubmit="return false" aria-label="Suche">
+    <button type="button" class="fld" data-off="Reiseziel ändern">${I.pin}<span>${esc(R.gebiet)}, ${esc(R.ziel)}</span></button>
+    <button type="button" class="fld" data-off="Reisedaten ändern">${I.cal}<span>${esc(R.anreise)} – ${esc(R.abreise)}</span></button>
+    <button type="button" class="fld" data-off="Personen ändern">${I.user}<span>${R.erwachsene} Erwachsene · ${R.zimmer} Zimmer</span></button>
+    <button type="button" class="go" data-off="Suchen">Suchen</button>
+  </form></div>`;
+}
+function footer() {
+  return `<footer><div class="wrap">
+    ${["Über Compass", "Hilfe", "Datenschutz", "AGB", "Impressum", "Partner werden"].map(x => `<button data-off="${x}">${x}</button>`).join("")}
+    <span class="copy">Compass ist eine fiktive Buchungsplattform für ein Studienprojekt der TH Augsburg. Es werden keine echten Buchungen ausgeführt.</span>
+  </div></footer>`;
+}
+function mapSvg() {
+  const dots = ALL.slice(0, 7).map((h, i) => `<circle cx="${90 + (i * 37) % 120}" cy="${55 + (i * 23) % 60}" r="5" fill="#155f6d" stroke="#fff" stroke-width="2"/>`).join("");
+  return `<svg viewBox="0 0 250 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="250" height="150" fill="#bfe2f0"/>
+    <path d="M30 40 C 70 10, 160 15, 210 40 S 240 110, 190 130 S 60 140, 40 110 S 0 70, 30 40z" fill="#e8efd9"/>
+    <path d="M60 60 C 100 50, 150 80, 190 70" stroke="#fff" stroke-width="3" fill="none"/>
+    <path d="M80 110 C 110 90, 140 100, 170 120" stroke="#fff" stroke-width="2" fill="none"/>
+    <text x="118" y="98" font-size="11" fill="#5d6b5a" font-family="sans-serif">BALI</text>${dots}</svg>`;
+}
+
+/* ===================== Seiten ===================== */
+function pageStart() {
+  const C = CONFIG.studie, z = PARAMS.gruppe === "zwilling";
+  return `<div class="study"><div class="wrap"><div class="panel">
+    <span class="tag">Studie · TH Augsburg</span>
+    <h1>${esc(C.titel)}</h1>
+    <p>${esc(C.intro)}</p>
+    ${z ? "" : `<h2>Einwilligung</h2>
+    <div class="consent">${C.einwilligung.map(p => `<p>${esc(p)}</p>`).join("")}</div>
+    <label class="check"><input type="checkbox" id="ok-consent" ${S.einwilligung ? "checked" : ""}> Ich habe die Informationen gelesen und bin mit der Teilnahme einverstanden.</label>`}
+    <div class="scen">
+      <h2>Deine Situation</h2>
+      <p>${esc(C.szenario)}</p>
+      <dl><dt>Reiseziel</dt><dd>${esc(R.gebiet)}, ${esc(R.ziel)}</dd>
+        <dt>Zeitraum</dt><dd>${esc(R.anreise)} – ${esc(R.abreise)} (${R.naechte} Nächte)</dd>
+        <dt>Personen</dt><dd>${R.erwachsene} Erwachsene, ${R.zimmer} Zimmer</dd></dl>
+    </div>
+    <p class="err" id="err-start" hidden>Bitte bestätige zuerst die Einwilligung.</p>
+    <button class="cta pbtn" id="go-start" data-log="start-weiter">Weiter zur Buchungsseite ${I.arrow}</button>
+  </div></div></div>`;
+}
+
+function card(h) {
+  const tr = trig(h), img = bilder(h)[0];
+  const am = h.ausstattung || CONFIG.ausstattungTest;
+  return `<article class="card" data-hotel="${h.id}">
+    <button class="ph" data-go="hotel-${h.id}" data-log="foto" aria-label="${esc(h.name)} ansehen"><img src="${img}" alt="Pool von ${esc(h.name)}"><span class="heart" data-off="Merken" role="button" aria-label="Merken">${I.heart}</span></button>
+    <div class="mid">
+      <div class="name"><button data-go="hotel-${h.id}" data-log="name">${esc(h.name)}</button><span class="stars" aria-label="${h.sterne} Sterne">${stars(h.sterne)}</span></div>
+      <div class="loc">${esc(R.gebiet)} · ${esc(h.entfernung)} <button data-off="Karte">Auf der Karte anzeigen</button></div>
+      <div class="room"><b>${esc(CONFIG.zimmer.typ)}</b> · ${esc(CONFIG.zimmer.bett)}</div>
+      <div class="amen">${am.map(a => `<div>${esc(a)}</div>`).join("")}<div>Kostenlose Stornierung</div></div>
+      ${tr.badge}
+    </div>
+    <div class="right">
+      <div class="score"><div><div class="lbl">${label(h.note)}</div><div class="cnt">${tr.bewertungen.toLocaleString("de-DE")} Bewertungen</div></div><div class="sq">${fmtNote(h.note)}</div></div>
+      ${priceBlock(h, tr)}
+      <button class="cta" data-go="hotel-${h.id}" data-log="verfuegbarkeit">Verfügbarkeit prüfen ${I.arrow}</button>
+    </div>
+  </article>`;
+}
+
+function pageListe() {
+  const hist = [3,5,8,12,16,20,18,15,12,10,8,7,5,4,3,2].map(v => `<i style="height:${v*4}%"></i>`).join("");
+  const f = (l, n) => `<div class="chk"><label><input type="checkbox" data-off="Filter ${l}"> ${l}</label><span class="n">${n}</span></div>`;
+  return header() + searchBar() + `<main class="wrap">
+    <div class="crumbs"><button data-off="Startseite">Startseite</button>›<button data-off="Indonesien">Indonesien</button>›<button data-off="Bali">Bali</button>›<span>${esc(R.gebiet)}</span>›<span>Suchergebnisse</span></div>
+    <div class="results">
+      <aside class="side">
+        <div class="mapbox">${mapSvg()}<button data-off="Karte">${I.pin} Auf der Karte anzeigen</button></div>
+        <div class="filters"><h3>Filtern nach:</h3>
+          <div class="fgroup"><h4>Ihr Budget (für ${R.naechte} Nächte)</h4><div class="small">€ 0 – € 600+</div><div class="hist">${hist}</div><div class="range" data-off="Budget-Filter"><b style="left:0"></b><b style="right:0"></b></div></div>
+          <div class="fgroup"><h4>Beliebte Filter</h4>${f("Frühstück inklusive", 5)}${f("Pool", 6)}${f("Kostenlose Stornierung", 7)}${f("4 Sterne", 5)}${f("Sehr gut: 8+", 6)}</div>
+          <div class="fgroup"><h4>Lage</h4>${f("Weniger als 1 km", 0)}${f("Weniger als 3 km", 6)}${f("Strandnähe", 4)}</div>
+        </div>
+      </aside>
+      <section>
+        <div class="head"><h1>${esc(R.gebiet)}: ${ALL.length} Unterkünfte gefunden</h1><button class="sort" data-off="Sortierung">${I.sort} Sortieren nach: Unsere Top-Tipps</button></div>
+        <div class="list">${ALL.map(card).join("")}</div>
+        <div class="more"><button data-off="Weitere Ergebnisse">Weitere Ergebnisse laden</button></div>
+      </section>
+    </div></main>` + footer();
+}
+
+function pageHotel(h) {
+  const tr = trig(h), img = bilder(h), am = h.ausstattung || CONFIG.ausstattungTest;
+  const subN = ["Sauberkeit", "Personal", "Ausstattung", "Preis-Leistung"];
+  const fac = [[I.wifi, "Kostenloses WLAN"], [I.pool, "Außenpool"], [I.cup, am.some(a => /Frühstück inklusive/.test(a)) ? "Frühstück inklusive" : "Frühstück verfügbar"], [I.snow, "Klimaanlage"], [I.shuttle, "Flughafentransfer"]];
+  const people = `<span class="people" aria-label="${R.erwachsene} Erwachsene">${I.person.repeat(R.erwachsene)}</span>`;
+  return header(false) + searchBar() + `<main class="wrap">
+    <div class="crumbs"><button data-go="liste" data-log="breadcrumb-zurueck">Startseite</button>›<button data-go="liste" data-log="breadcrumb-zurueck">Bali</button>›<button data-go="liste" data-log="breadcrumb-zurueck">${esc(R.gebiet)}</button>›<span>${esc(h.name)}</span></div>
+    <div class="tabs" role="tablist">
+      <button class="on" data-scroll="d-top">Überblick</button><button data-scroll="d-preise">Infos &amp; Preise</button><button data-scroll="d-ausst">Ausstattung</button><button data-scroll="d-regeln">Hausregeln</button><button data-scroll="d-bew">Gästebewertungen (${tr.bewertungen.toLocaleString("de-DE")})</button>
+    </div>
+    <div class="dhead" id="d-top">
+      <div><span class="stars">${stars(h.sterne)}</span><h1>${esc(h.name)}</h1>
+        <div class="loc">${I.pin.replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px;color:#0b6b80"')} Jl. Kayu Aya, ${esc(R.gebiet)}, Bali · ${esc(h.entfernung)} <button data-off="Karte">Auf der Karte anzeigen</button></div></div>
+      <div class="actions"><button class="heart" style="position:static" data-off="Merken" aria-label="Merken">${I.heart}</button><button class="cta" data-scroll="d-preise" data-log="jetzt-reservieren-oben">Jetzt reservieren</button></div>
+    </div>
+    <div class="gallery">${img.map((s, i) => `<button data-off="Fotogalerie" aria-label="Foto ${i + 1}"><img src="${s}" alt="Foto ${i + 1} von ${esc(h.name)}"></button>`).join("")}</div>
+    <div class="dgrid">
+      <div class="desc">
+        <p>Das ${esc(h.name)} liegt in ${esc(R.gebiet)}, ${esc(h.entfernung)}, und nur wenige Gehminuten vom Strand entfernt. Die Unterkunft bietet einen Außenpool, einen tropischen Garten und kostenloses WLAN in allen Bereichen.</p>
+        <p>Alle Zimmer sind klimatisiert und verfügen über ein eigenes Bad mit Dusche, einen Flachbild-TV und eine Terrasse. ${am.some(a => /Frühstück inklusive/.test(a)) ? "Jeden Morgen wird ein Frühstück mit frischem Obst und balinesischen Gerichten serviert." : "Frühstück kann vor Ort gegen Aufpreis gebucht werden."}</p>
+        <p>Paare bewerten die Lage besonders gut. Der Flughafen Ngurah Rai ist etwa 30 Minuten mit dem Auto entfernt.</p>
+        <h2 class="sec" id="d-ausst">Beliebteste Ausstattung</h2>
+        <div class="facil">${fac.map(([ic, t]) => `<span>${ic}${t}</span>`).join("")}</div>
+      </div>
+      <aside class="box" id="d-bew">
+        <div class="score" style="justify-content:space-between"><div><div class="lbl">${label(h.note)}</div><div class="cnt">${tr.bewertungen.toLocaleString("de-DE")} Bewertungen</div></div><div class="sq">${fmtNote(h.note)}</div></div>
+        <div class="sub">${h.sub.map((v, i) => `<div><span>${subN[i]}</span><b>${fmtNote(v)}</b><i style="--w:${v * 10}%"></i></div>`).join("")}</div>
+        <div class="quote">„${esc(h.zitat)}“</div>
+        <button class="small" style="background:none;border:0;padding:0;margin-top:10px;color:var(--brand-ink);text-decoration:underline" data-off="Alle Bewertungen">Alle Bewertungen lesen</button>
+      </aside>
+    </div>
+    <h2 class="sec" id="d-preise">Verfügbarkeit</h2>
+    <div class="small" style="margin-bottom:8px">${esc(R.anreise)} – ${esc(R.abreise)} · ${R.erwachsene} Erwachsene · ${R.zimmer} Zimmer</div>
+    <div class="tbl"><table>
+      <thead><tr><th>Zimmertyp</th><th>Anzahl Gäste</th><th>Preis für ${R.naechte} Nächte</th><th>Deine Auswahl</th></tr></thead>
+      <tbody><tr>
+        <td><span class="room-t">${esc(CONFIG.zimmer.typ)}</span><div>${esc(CONFIG.zimmer.bett)} · ${esc(CONFIG.zimmer.groesse)}</div>
+          <ul>${am.map(a => `<li>${esc(a)}</li>`).join("")}<li>Kostenlose Stornierung bis 2 Tage vor Anreise</li></ul></td>
+        <td>${people}</td>
+        <td>${priceBlock(h, tr).replace('class="price"', 'class="price" style="justify-items:start;text-align:left"')}${tr.badge}</td>
+        <td><div class="reserve"><button class="cta" data-reserve="${h.id}" data-log="reservieren">Ich reserviere</button><span class="small">Du wirst noch nicht belastet</span></div></td>
+      </tr></tbody>
+    </table></div>
+    <h2 class="sec" id="d-regeln">Hausregeln</h2>
+    <div class="rules">
+      <div><b>Check-in</b><span>Ab 14:00 Uhr</span></div>
+      <div><b>Check-out</b><span>Bis 12:00 Uhr</span></div>
+      <div><b>Stornierung</b><span>Kostenlos bis 2 Tage vor Anreise</span></div>
+      <div><b>Haustiere</b><span>Haustiere sind nicht gestattet.</span></div>
+    </div>
+    <div style="margin:24px 0 36px"><button class="cta" data-go="liste" data-log="zurueck-zur-liste" style="background:#fff;color:var(--brand-2);border:1px solid var(--brand-2)">← Zurück zu den Suchergebnissen</button></div>
+  </main>` + footer();
+}
+
+function pageFragen() {
+  const h = byId[S.wahl], tr = trig(h), z = PARAMS.gruppe === "zwilling";
+  const A = S.antworten || S.antworten_entwurf || {};
+  const scale = [1,2,3,4,5,6,7];
+  const lik = testOrder.map(t => `<tr><td>${esc(t.name)}</td>${scale.map(n => `<td><input type="radio" name="att-${t.id}" value="${n}" aria-label="${esc(t.name)}: ${n}" ${A["att-" + t.id] == n ? "checked" : ""}></td>`).join("")}</tr>`).join("");
+  return header(false) + `<div class="study"><div class="wrap"><form class="panel" id="qform" novalidate>
+    <span class="tag">Fast geschafft</span>
+    <h1>Deine Auswahl</h1>
+    <div class="chosen"><img src="${bilder(h)[0]}" alt=""><div><b style="font-size:16px">${esc(h.name)}</b> <span class="stars">${stars(h.sterne)}</span><div class="small">${esc(CONFIG.zimmer.typ)} · ${stayTxt} · ${eur(h.preis)}</div></div></div>
+    <p>Es wird nichts gebucht. Bitte beantworte zum Schluss ein paar Fragen zu deiner Entscheidung.</p>
+    <button type="button" class="small" data-go="liste" data-log="auswahl-aendern" style="background:none;border:0;padding:0;color:var(--brand-ink);text-decoration:underline;justify-self:start">Doch ein anderes Hotel wählen</button>
+
+    <div class="q"><label for="q1">1. Warum hast du dich für dieses Hotel entschieden?</label><textarea id="q1" name="q1">${esc(A.q1 || "")}</textarea></div>
+    <div class="q"><label for="q2">2. Beschreib kurz, wie du vorgegangen bist. <span class="hint">Was hast du dir angeschaut, was hast du verglichen, was war dir wichtig?</span></label><textarea id="q2" name="q2">${esc(A.q2 || "")}</textarea></div>
+    <div class="q"><span class="qt">3. Würdest du jetzt buchen oder lieber noch warten?</span>
+      <div class="opts"><label><input type="radio" name="q3" value="jetzt" ${A.q3 === "jetzt" ? "checked" : ""}> Jetzt buchen</label><label><input type="radio" name="q3" value="warten" ${A.q3 === "warten" ? "checked" : ""}> Noch warten</label></div>
+      <label for="q3b" class="hint">Warum?</label><input type="text" id="q3b" name="q3b" value="${esc(A.q3b || "")}"></div>
+    <div class="q"><span class="qt">4. Wie attraktiv findest du jedes der vier Hotels? <span class="hint">1 = gar nicht attraktiv, 7 = sehr attraktiv</span></span>
+      <div class="likert"><table><thead><tr><th>Hotel</th>${scale.map(n => `<th>${n}</th>`).join("")}</tr></thead><tbody>${lik}</tbody></table></div></div>
+    <div class="q"><label for="q5">5. Ist dir auf der Seite etwas aufgefallen, das deine Entscheidung beeinflusst hat?</label><textarea id="q5" name="q5">${esc(A.q5 || "")}</textarea></div>
+    ${z ? "" : `<div class="q"><span class="qt">6. Zu deiner Person</span>
+      <label for="d-alter" class="hint">Alter</label><select id="d-alter" name="d_alter"><option value="">Bitte wählen</option>${["unter 18","18–21","22–25","26–29","30–39","40 oder älter"].map(o => `<option ${A.d_alter === o ? "selected" : ""}>${o}</option>`).join("")}</select>
+      <label for="d-geschlecht" class="hint">Geschlecht</label><select id="d-geschlecht" name="d_geschlecht"><option value="">Bitte wählen</option>${["weiblich","männlich","divers","keine Angabe"].map(o => `<option ${A.d_geschlecht === o ? "selected" : ""}>${o}</option>`).join("")}</select>
+      <label for="d-status" class="hint">Tätigkeit</label><select id="d-status" name="d_status"><option value="">Bitte wählen</option>${["Studium","Ausbildung","Berufstätig","Sonstiges"].map(o => `<option ${A.d_status === o ? "selected" : ""}>${o}</option>`).join("")}</select>
+      <label for="d-reisen" class="hint">Wie oft buchst du Unterkünfte online?</label><select id="d-reisen" name="d_reisen"><option value="">Bitte wählen</option>${["Nie","Seltener als 1× im Jahr","1–2× im Jahr","3× im Jahr oder öfter"].map(o => `<option ${A.d_reisen === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>`}
+    <p class="err" id="err-q" hidden>Bitte beantworte die Fragen 1, 3 und 4.</p>
+    <button class="cta pbtn" type="submit" data-log="absenden">Antworten absenden</button>
+  </form></div></div>`;
+}
+
+function pageDanke() {
+  const daten = JSON.stringify(dataset(), null, 2);
+  return header(false) + `<div class="study"><div class="wrap"><div class="panel">
+    <span class="tag">Vielen Dank</span>
+    <h1>Deine Antworten sind gespeichert</h1>
+    <p>Danke für deine Teilnahme. Du kannst das Fenster jetzt schließen. Falls du deine Daten später löschen lassen möchtest, nenne uns diesen Code:</p>
+    <div class="code">${S.id}</div>
+    <p class="small" id="send-state">${CONFIG.sheetUrl ? (S.gesendet ? "Übertragung bestätigt." : "Daten werden übertragen …") : "Testmodus: Speicherung im Google Sheet ist noch nicht verbunden."}</p>
+    <details><summary>Protokoll anzeigen (nur für das Studienteam)</summary><textarea readonly id="raw" aria-label="Protokoll">${esc(daten)}</textarea></details>
+  </div></div></div>`;
+}
+
+/* ===================== Datensatz & Senden ===================== */
+function dataset() {
+  const views = S.log.filter(e => e.typ === "seite");
+  const dwell = {};
+  views.forEach((v, i) => { const next = views[i + 1] ? views[i + 1].t : (S.endT || Date.now() - S.start); dwell[v.ziel] = (dwell[v.ziel] || 0) + (next - v.t); });
+  return {
+    code: S.id, gruppe: PARAMS.gruppe, persona: PARAMS.persona, variante: PARAMS.variante, zuordnung: PARAMS.zuordnung, reihenfolge: PARAMS.reihenfolge,
+    start: new Date(S.start).toISOString(), dauer_s: Math.round(((S.endT || Date.now() - S.start)) / 1000),
+    trigger_zuordnung: triggerOf,
+    reihenfolge_liste: ALL.map(h => h.id),
+    wahl: S.wahl, wahl_trigger: S.wahl ? (triggerOf[S.wahl] || "fuell") : null,
+    geoeffnete_hotels: [...new Set(S.log.filter(e => e.typ === "seite" && e.ziel.startsWith("hotel-")).map(e => e.ziel.slice(6)))],
+    verweildauer_ms: dwell,
+    antworten: S.antworten, protokoll: S.log
+  };
+}
+/* Flache Zeile für das Blatt "Teilnahmen" */
+function zeile(status) {
+  const d = dataset(), z = {
+    code: d.code, status, gruppe: d.gruppe, persona: d.persona, variante: d.variante, zuordnung: d.zuordnung, reihenfolge: d.reihenfolge,
+    start: d.start, dauer_s: d.dauer_s, letzte_seite: currentRoute(),
+    wahl: d.wahl || "", wahl_trigger: d.wahl_trigger || "",
+    geoeffnete_hotels: d.geoeffnete_hotels.join(", "), anzahl_geoeffnet: d.geoeffnete_hotels.length,
+    anzahl_klicks: S.log.filter(e => e.typ !== "seite").length,
+    anzahl_klicks_ohne_funktion: S.log.filter(e => e.typ === "klick_ohne_funktion").length,
+    reihenfolge_liste: d.reihenfolge_liste.join(", "),
+    trigger_zuordnung: Object.entries(d.trigger_zuordnung).map(([h, t]) => h + "=" + t).join(", ")
+  };
+  Object.entries(d.verweildauer_ms).forEach(([k, v]) => { z["vd_" + k + "_s"] = Math.round(v / 100) / 10; });
+  const A = S.antworten || S.antworten_entwurf || {};
+  Object.entries(A).forEach(([k, v]) => { z["a_" + k.replace(/-/g, "_")] = v; });
+  return z;
+}
+/* Senden: bei jedem Seitenwechsel ein Zwischenstand, am Ende "abgeschlossen".
+   Klicks werden nur einmal geschickt (ab dem zuletzt gesendeten Eintrag). */
+function sync(status, beimVerlassen) {
+  if (!CONFIG.sheetUrl) return;
+  S.gesendetBis = S.gesendetBis || 0;
+  const neu = S.log.slice(S.gesendetBis).map((e, i) => ({ nr: S.gesendetBis + i + 1, ...e }));
+  const body = JSON.stringify({ teilnahme: zeile(status), klicks: neu.map(e => ({ code: S.id, nr: e.nr, t_ms: e.t, typ: e.typ, ziel: e.ziel, seite: e.seite, hotel: e.hotel || "", trigger: e.trigger || (e.hotel ? (triggerOf[e.hotel] || "fuell") : "") })) });
+  S.gesendetBis = S.log.length; save();
+  return fetch(CONFIG.sheetUrl, { method: "POST", mode: "no-cors", keepalive: !!beimVerlassen, headers: { "Content-Type": "text/plain;charset=utf-8" }, body })
+    .then(() => { if (status === "abgeschlossen") { S.gesendet = true; save(); const el = document.getElementById("send-state"); if (el) el.textContent = "Übertragung bestätigt."; } })
+    .catch(() => { const el = document.getElementById("send-state"); if (el && status === "abgeschlossen") el.textContent = "Übertragung fehlgeschlagen. Bitte gib dem Studienteam den Code oben."; });
+}
+window.addEventListener("pagehide", () => { if (!S.gesendet && S.log.length > (S.gesendetBis || 0)) sync("unvollstaendig", true); });
+
+/* ===================== Routing ===================== */
+function currentRoute() { return (location.hash || "").replace(/^#/, "") || "start"; }
+function go(r) { if (currentRoute() === r) render(); else location.hash = r; }
+function render() {
+  let r = currentRoute();
+  if (r !== "start" && !S.einwilligung && PARAMS.gruppe !== "zwilling") r = "start";
+  if (r === "fragen" && !S.wahl) r = "liste";
+  if (r === "danke" && !S.antworten) r = S.wahl ? "fragen" : "liste";
+  if (r !== currentRoute()) { history.replaceState(null, "", "#" + r); }
+  const app = document.getElementById("app");
+  if (r === "start") app.innerHTML = pageStart();
+  else if (r === "liste") app.innerHTML = pageListe();
+  else if (r.startsWith("hotel-") && byId[r.slice(6)]) app.innerHTML = pageHotel(byId[r.slice(6)]);
+  else if (r === "fragen") app.innerHTML = pageFragen();
+  else if (r === "danke") app.innerHTML = pageDanke();
+  else { history.replaceState(null, "", "#liste"); app.innerHTML = pageListe(); r = "liste"; }
+  document.title = r.startsWith("hotel-") ? byId[r.slice(6)].name + " – Compass" : r === "liste" ? R.gebiet + " – Compass Hotelsuche" : "Compass Hotelsuche";
+  window.scrollTo(0, 0);
+  const last = S.log[S.log.length - 1];
+  if (!last || last.typ !== "seite" || last.ziel !== r) log("seite", r, r.startsWith("hotel-") ? { hotel: r.slice(6) } : null);
+  if (r === "danke") { if (!S.gesendet) sync("abgeschlossen"); }
+  else if (r !== "start") sync("unvollstaendig");
+}
+window.addEventListener("hashchange", render);
+
+/* ===================== Klicks ===================== */
+let toastT;
+function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+document.addEventListener("click", e => {
+  const off = e.target.closest("[data-off]");
+  if (off) { e.preventDefault(); e.stopPropagation(); log("klick_ohne_funktion", off.dataset.off); toast("Diese Funktion ist in der Studie nicht verfügbar."); return; }
+  const el = e.target.closest("[data-go],[data-scroll],[data-reserve],#go-start,[data-log]");
+  if (!el) return;
+  const hotel = el.closest("[data-hotel]");
+  if (el.dataset.log && el.type !== "submit") log("klick", el.dataset.log, hotel ? { hotel: hotel.dataset.hotel } : null);
+  if (el.id === "go-start") {
+    const cb = document.getElementById("ok-consent");
+    if (cb && !cb.checked) { document.getElementById("err-start").hidden = false; return; }
+    S.einwilligung = true; save(); go("liste"); return;
+  }
+  if (el.dataset.scroll) { const t = document.getElementById(el.dataset.scroll); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); log("klick", "tab:" + el.dataset.scroll); return; }
+  if (el.dataset.reserve) { S.wahl = el.dataset.reserve; log("wahl", S.wahl, { trigger: triggerOf[S.wahl] || "fuell" }); save(); go("fragen"); return; }
+  if (el.dataset.go) { go(el.dataset.go); }
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "qform") return;
+  e.preventDefault();
+  const fd = new FormData(e.target), A = {};
+  for (const [k, v] of fd.entries()) A[k] = typeof v === "string" ? v.trim() : v;
+  const ok = A.q1 && A.q3 && testOrder.every(t => A["att-" + t.id]);
+  if (!ok) { document.getElementById("err-q").hidden = false; document.getElementById("err-q").scrollIntoView({ block: "center" }); return; }
+  S.antworten = A; S.endT = Date.now() - S.start; log("abgesendet", S.wahl); save(); go("danke");
+});
+document.addEventListener("input", e => {
+  const f = e.target.closest("#qform"); if (!f) return;
+  const fd = new FormData(f), A = {}; for (const [k, v] of fd.entries()) A[k] = v;
+  S.antworten_entwurf = A; try { sessionStorage.setItem("compass-state", JSON.stringify(S)); } catch (err) {}
+});
+
+render();
+</script>
+
+</body>
+</html>

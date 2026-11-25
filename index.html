@@ -104,6 +104,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .amen div::before { content: "✓"; display: inline-block; width: 18px; font-weight: 700; }
 .badge { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-top: 6px; width: fit-content; max-width: 100%; }
 .badge svg { width: 14px; height: 14px; flex: none; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .b-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #f3b9bb; }
 .b-good { background: var(--good-bg); color: var(--good); }
 .b-info { background: var(--info-bg); color: var(--info); }
@@ -175,7 +176,8 @@ td ul li::before { content: "✓ "; font-weight: 700; }
 .scen dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 6px 0 0; font-size: 13.5px; }
 .scen dt { color: var(--muted); }
 .scen dd { margin: 0; font-weight: 600; }
-.consent { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 13.5px; max-height: 200px; overflow: auto; display: grid; gap: 8px; }
+.steps { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.consent { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 13.5px; max-height: 260px; overflow: auto; display: grid; gap: 8px; }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
 .check input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--brand-2); flex: none; }
 .q { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -187,11 +189,29 @@ textarea { min-height: 96px; resize: vertical; }
 .opts label { display: flex; gap: 8px; align-items: center; border: 1px solid #b9c4c8; border-radius: 6px; padding: 9px 12px; cursor: pointer; }
 .opts input { accent-color: var(--brand-2); }
 .likert { overflow-x: auto; }
-.likert table { min-width: 520px; }
+.likert table { min-width: 0; table-layout: fixed; }
+.likert th:first-child, .likert td:first-child { width: 38%; }
+.likert th .num { display: none; }
+.likert th .lab { display: block; font-weight: 500; font-size: 11.5px; line-height: 1.25; color: var(--muted); }
+.likert td:first-child { font-weight: 500 !important; font-size: 13.5px; }
+.likert tbody tr:nth-child(odd) td { background: #fafbfb; }
+.likert tr.missing td:first-child { color: var(--warn); }
+select.missing { border-color: var(--warn); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 640px) {
+  .likert table, .likert tbody, .likert tr, .likert td { display: block; width: 100% !important; }
+  .likert thead { display: none; }
+  .likert tr { border-top: 1px solid var(--line); padding: 10px 0; }
+  .likert td { border: 0; padding: 2px 0; text-align: left !important; background: none !important; }
+  .likert td:first-child { margin-bottom: 6px; }
+  .likert td:not(:first-child) { display: inline-block; width: auto !important; margin-right: 6px; }
+  .likert td:not(:first-child) input { width: 26px; height: 26px; }
+  .likert tr::after { content: "1 = " attr(data-l1) " · 5 = " attr(data-l5); display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+}
 .likert th { background: var(--bg-soft); color: var(--fg); font-weight: 600; text-align: center; font-size: 12.5px; padding: 8px 4px; }
 .likert th:first-child { text-align: left; }
 .likert td { text-align: center; padding: 10px 4px; }
-.likert td:first-child { text-align: left; font-weight: 600; }
+.likert td:first-child { text-align: left; }
 .likert input { width: 18px; height: 18px; accent-color: var(--brand-2); }
 .err { color: var(--warn); font-size: 13px; font-weight: 600; }
 .chosen { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
@@ -264,8 +284,6 @@ const S0 = CONFIG.standard;
 const PARAMS = {
   gruppe: (P.get("gruppe") === "zwilling") ? "zwilling" : S0.gruppe,
   persona: (P.get("persona") || "").slice(0, 20),
-  variante: num("variante", S0.variante, 2),
-  zuordnung: num("zuordnung", S0.zuordnung, 4),
   reihenfolge: num("reihenfolge", S0.reihenfolge, 2)
 };
 const store = {
@@ -273,8 +291,8 @@ const store = {
   set(v) { try { sessionStorage.setItem("compass-state", JSON.stringify(v)); } catch (e) {} }
 };
 let S = store.get();
-if (!S || S.paramsKey !== JSON.stringify(PARAMS)) {
-  S = { id: Math.random().toString(36).slice(2, 8).toUpperCase(), start: Date.now(), paramsKey: JSON.stringify(PARAMS),
+if (!S || S.paramsKey !== JSON.stringify(PARAMS) || S.version !== 4) {
+  S = { version: 4, id: Math.random().toString(36).slice(2, 8).toUpperCase(), start: Date.now(), paramsKey: JSON.stringify(PARAMS),
         einwilligung: false, wahl: null, antworten: null, log: [], gesendet: false };
 }
 const save = () => store.set(S);
@@ -284,12 +302,9 @@ function log(typ, ziel, extra) {
   S.log.push(e); save();
 }
 
-/* Trigger an Hotels zuordnen, Reihenfolge festlegen */
-const rot = (arr, k) => arr.map((_, i) => arr[(i + k) % arr.length]);
-const triggerOf = {};
-rot(CONFIG.trigger, PARAMS.zuordnung - 1).forEach((t, i) => { triggerOf[CONFIG.testHotels[i].id] = t; });
-const testOrder = PARAMS.reihenfolge === 2 ? [...CONFIG.testHotels].reverse() : CONFIG.testHotels;
-const ALL = [...testOrder, ...CONFIG.fuellHotels];
+/* Hinweise je Hotel, Reihenfolge der Liste */
+const triggerOf = Object.fromEntries(CONFIG.hotels.map(h => [h.id, (h.hinweise || []).join("+") || "keiner"]));
+const ALL = PARAMS.reihenfolge === 2 ? [...CONFIG.hotels].reverse() : [...CONFIG.hotels];
 const byId = Object.fromEntries(ALL.map(h => [h.id, h]));
 
 /* ===================== Hilfen ===================== */
@@ -381,42 +396,21 @@ const I = {
   sort: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>'
 };
 
-/* ===================== Trigger ===================== */
-const knappStart = () => CONFIG.triggerTexte.knappheit.v2.start;
-function timerText() {
-  const rest = Math.max(0, knappStart() - Math.floor((Date.now() - S.start) / 1000));
-  const p = n => String(n).padStart(2, "0");
-  return `${p(Math.floor(rest / 3600))}:${p(Math.floor(rest % 3600 / 60))}:${p(rest % 60)}`;
-}
+/* ===================== Hinweise (Trigger) ===================== */
 function trig(h) {
-  const t = triggerOf[h.id], v = "v" + PARAMS.variante, T = CONFIG.triggerTexte;
-  const out = { alt: null, spar: null, ref: null, badge: "", bewertungen: h.bewertungen, typ: t || "fuell" };
-  if (t === "anker") {
-    const c = T.anker[v];
-    if (PARAMS.variante === 1) {
-      out.alt = Math.round(h.preis * c.faktor / 1) ; out.spar = out.alt - h.preis;
-    } else {
-      out.ref = Math.round(h.preis * c.faktor / 5) * 5;
-      out.badge = `<div class="badge b-info" data-trigger="anker">${I.tag}${esc(c.text.replace("{ref}", out.ref))}</div>`;
-    }
-  } else if (t === "knappheit") {
-    const c = T.knappheit[v];
-    out.badge = PARAMS.variante === 1
-      ? `<div class="badge b-warn" data-trigger="knappheit">${I.clock}${esc(c.text)}</div>`
-      : `<div class="badge b-warn" data-trigger="knappheit">${I.clock}<span>${esc(c.text).replace("{timer}", `<span class="tmr">${timerText()}</span>`)}</span></div>`;
-  } else if (t === "socialproof") {
-    const c = T.socialproof[v];
-    if (PARAMS.variante === 1) out.bewertungen = c.bewertungen;
-    else out.badge = `<div class="badge b-good" data-trigger="socialproof">${I.people}${esc(c.text)}</div>`;
-  }
+  const T = CONFIG.hinweisTexte, hw = h.hinweise || [];
+  const out = { alt: null, spar: null, badge: "", bewertungen: h.bewertungen };
+  if (hw.includes("anker")) { out.alt = h.preisVorher || Math.round(h.preis * 1.3); out.spar = out.alt - h.preis; }
+  if (hw.includes("knappheit")) out.badge += `<div class="badge b-warn" data-trigger="knappheit">${I.clock}${esc(T.knappheit.replace("{n}", h.zimmerFrei || 2))}</div>`;
+  if (hw.includes("socialproof")) out.badge += `<div class="badge b-good" data-trigger="socialproof">${I.people}${esc(T.socialproof.replace("{n}", h.gebucht || 9))}</div>`;
+  if (hw.includes("beliebt")) out.badge += `<div class="badge b-good" data-trigger="beliebt">${I.heart.replace('stroke="#1a2227"', 'stroke="currentColor" fill="currentColor"')}${esc(T.beliebt)}</div>`;
   return out;
 }
-setInterval(() => document.querySelectorAll(".tmr").forEach(el => el.textContent = timerText()), 1000);
 
 function priceBlock(h, tr) {
   return `<div class="price">
     <span class="stay">${stayTxt}</span>
-    ${tr.spar ? `<span class="save"><em>−${Math.round(tr.spar / tr.alt * 100)} %</em>${esc(CONFIG.triggerTexte.anker.v1.text.replace("{spar}", tr.spar))}</span>` : ""}
+    ${tr.spar ? `<span class="save"><em>−${Math.round(tr.spar / tr.alt * 100)} %</em>${esc(CONFIG.hinweisTexte.anker.replace("{spar}", tr.spar))}</span>` : ""}
     <span class="row">${tr.alt ? `<span class="old">${eur(tr.alt)}</span>` : ""}<span class="now">${eur(h.preis)}</span></span>
     <span class="tax">Inkl. Steuern und Gebühren</span>
   </div>`;
@@ -477,9 +471,9 @@ function pageStart() {
   return `<div class="study"><div class="wrap"><div class="panel">
     <span class="tag">Studie · TH Augsburg</span>
     <h1>${esc(C.titel)}</h1>
-    <p>${esc(C.intro)}</p>
+    ${C.intro.map(p => `<p>${esc(p)}</p>`).join("")}
     ${z ? "" : `<h2>Einwilligung</h2>
-    <div class="consent">${C.einwilligung.map(p => `<p>${esc(p)}</p>`).join("")}</div>
+    <div class="consent">${C.einwilligung.map(p => `<p>${esc(p).replace(/^([^:]{3,30}):/, "<b>$1:</b>")}</p>`).join("")}</div>
     <label class="check"><input type="checkbox" id="ok-consent" ${S.einwilligung ? "checked" : ""}> Ich habe die Informationen gelesen und bin mit der Teilnahme einverstanden.</label>`}
     <div class="scen">
       <h2>Deine Situation</h2>
@@ -488,6 +482,7 @@ function pageStart() {
         <dt>Zeitraum</dt><dd>${esc(R.anreise)} – ${esc(R.abreise)} (${R.naechte} Nächte)</dd>
         <dt>Personen</dt><dd>${R.erwachsene} Erwachsene, ${R.zimmer} Zimmer</dd></dl>
     </div>
+    <div><h2>So geht's</h2><ul class="steps">${C.hinweise.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>
     <p class="err" id="err-start" hidden>Bitte bestätige zuerst die Einwilligung.</p>
     <button class="cta pbtn" id="go-start" data-log="start-weiter">Weiter zur Buchungsseite ${I.arrow}</button>
   </div></div></div>`;
@@ -495,7 +490,7 @@ function pageStart() {
 
 function card(h) {
   const tr = trig(h), img = bilder(h)[0];
-  const am = h.ausstattung || CONFIG.ausstattungTest;
+  const am = h.ausstattung || CONFIG.ausstattung;
   return `<article class="card" data-hotel="${h.id}">
     <button class="ph" data-go="hotel-${h.id}" data-log="foto" aria-label="${esc(h.name)} ansehen"><img src="${img}" alt="Pool von ${esc(h.name)}"><span class="heart" data-off="Merken" role="button" aria-label="Merken">${I.heart}</span></button>
     <div class="mid">
@@ -536,7 +531,7 @@ function pageListe() {
 }
 
 function pageHotel(h) {
-  const tr = trig(h), img = bilder(h), am = h.ausstattung || CONFIG.ausstattungTest;
+  const tr = trig(h), img = bilder(h), am = h.ausstattung || CONFIG.ausstattung;
   const subN = ["Sauberkeit", "Personal", "Ausstattung", "Preis-Leistung"];
   const fac = [[I.wifi, "Kostenloses WLAN"], [I.pool, "Außenpool"], [I.cup, am.some(a => /Frühstück inklusive/.test(a)) ? "Frühstück inklusive" : "Frühstück verfügbar"], [I.snow, "Klimaanlage"], [I.shuttle, "Flughafentransfer"]];
   const people = `<span class="people" aria-label="${R.erwachsene} Erwachsene">${I.person.repeat(R.erwachsene)}</span>`;
@@ -589,11 +584,44 @@ function pageHotel(h) {
   </main>` + footer();
 }
 
+/* ===================== Fragebogen ===================== */
+const FB = {
+  zustimmung: ["stimme gar nicht zu", "stimme eher nicht zu", "teils/teils", "stimme eher zu", "stimme voll zu"],
+  wichtig: ["gar nicht wichtig", "eher unwichtig", "teils/teils", "eher wichtig", "sehr wichtig"],
+  a2: [["a2_verglichen", "Ich habe mehrere Hotels genau miteinander verglichen."],
+       ["a2_schnell", "Ich habe mich schnell entschieden."],
+       ["a2_gefuehl", "Ich habe mich vor allem auf mein Gefühl verlassen."],
+       ["a2_gelesen", "Ich habe die Informationen auf der Seite sorgfältig gelesen."]],
+  b1: [["b1_preis", "Der Preis"],
+       ["b1_bewertungen", "Die Bewertungen der Gäste"],
+       ["b1_fotos", "Die Fotos"],
+       ["b1_lage", "Die Lage"],
+       ["b1_hinweise", "Zusätzliche Hinweise auf der Seite (z. B. zu Verfügbarkeit, Preisvergleich oder Auszeichnungen)"]],
+  c1: [["c1_verfuegbarkeit", "Ich hatte den Eindruck, dass das Angebot bald nicht mehr verfügbar sein könnte."],
+       ["c1_zeitdruck", "Ich hatte das Gefühl, schnell entscheiden zu müssen."],
+       ["c1_andere", "Ich hatte den Eindruck, dass viele andere Personen dieses Hotel wählen."],
+       ["c1_angebot", "Ich hatte das Gefühl, ein gutes Angebot zu bekommen."],
+       ["c1_empfehlenswert", "Das gewählte Hotel wirkte besonders empfehlenswert."]],
+  d1: ["18–29", "30–49", "50–64", "65+", "keine Angabe"],
+  d2: ["weiblich", "männlich", "divers", "keine Angabe"],
+  d3: ["Studium", "Ausbildung", "Vollzeit berufstätig", "Teilzeit berufstätig", "selbstständig", "arbeitslos", "Haushalt", "Rente", "keine Angabe"],
+  d4: ["Deutschland", "anderes Land in Europa", "USA", "anderes Land außerhalb Europas", "keine Angabe"]
+};
+function mischen(n) { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function matrix(items, labels, order, A) {
+  const rows = order.map(i => items[i]);
+  return `<div class="likert"><table>
+    <thead><tr><th><span class="sr">Aussage</span></th>${labels.map((l, i) => `<th><span class="num">${i + 1}</span><span class="lab">${esc(l)}</span></th>`).join("")}</tr></thead>
+    <tbody>${rows.map(([k, t]) => `<tr data-item="${k}" data-l1="${esc(labels[0])}" data-l5="${esc(labels[4])}"><td>${esc(t)}</td>${labels.map((l, i) => `<td><input type="radio" name="${k}" value="${i + 1}" aria-label="${esc(t)}: ${esc(l)}" ${A[k] == i + 1 ? "checked" : ""}></td>`).join("")}</tr>`).join("")}</tbody>
+  </table></div>`;
+}
+function sel(id, name, opts, A) {
+  return `<select id="${id}" name="${name}"><option value="">Bitte wählen</option>${opts.map(o => `<option ${A[name] === o ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+}
 function pageFragen() {
-  const h = byId[S.wahl], tr = trig(h), z = PARAMS.gruppe === "zwilling";
+  const h = byId[S.wahl];
   const A = S.antworten || S.antworten_entwurf || {};
-  const scale = [1,2,3,4,5,6,7];
-  const lik = testOrder.map(t => `<tr><td>${esc(t.name)}</td>${scale.map(n => `<td><input type="radio" name="att-${t.id}" value="${n}" aria-label="${esc(t.name)}: ${n}" ${A["att-" + t.id] == n ? "checked" : ""}></td>`).join("")}</tr>`).join("");
+  if (!S.ordA2) { S.ordA2 = mischen(FB.a2.length); S.ordB1 = mischen(FB.b1.length); S.ordC1 = mischen(FB.c1.length); save(); }
   return header(false) + `<div class="study"><div class="wrap"><form class="panel" id="qform" novalidate>
     <span class="tag">Fast geschafft</span>
     <h1>Deine Auswahl</h1>
@@ -601,20 +629,19 @@ function pageFragen() {
     <p>Es wird nichts gebucht. Bitte beantworte zum Schluss ein paar Fragen zu deiner Entscheidung.</p>
     <button type="button" class="small" data-go="liste" data-log="auswahl-aendern" style="background:none;border:0;padding:0;color:var(--brand-ink);text-decoration:underline;justify-self:start">Doch ein anderes Hotel wählen</button>
 
-    <div class="q"><label for="q1">1. Warum hast du dich für dieses Hotel entschieden?</label><textarea id="q1" name="q1">${esc(A.q1 || "")}</textarea></div>
-    <div class="q"><label for="q2">2. Beschreib kurz, wie du vorgegangen bist. <span class="hint">Was hast du dir angeschaut, was hast du verglichen, was war dir wichtig?</span></label><textarea id="q2" name="q2">${esc(A.q2 || "")}</textarea></div>
-    <div class="q"><span class="qt">3. Würdest du jetzt buchen oder lieber noch warten?</span>
-      <div class="opts"><label><input type="radio" name="q3" value="jetzt" ${A.q3 === "jetzt" ? "checked" : ""}> Jetzt buchen</label><label><input type="radio" name="q3" value="warten" ${A.q3 === "warten" ? "checked" : ""}> Noch warten</label></div>
-      <label for="q3b" class="hint">Warum?</label><input type="text" id="q3b" name="q3b" value="${esc(A.q3b || "")}"></div>
-    <div class="q"><span class="qt">4. Wie attraktiv findest du jedes der vier Hotels? <span class="hint">1 = gar nicht attraktiv, 7 = sehr attraktiv</span></span>
-      <div class="likert"><table><thead><tr><th>Hotel</th>${scale.map(n => `<th>${n}</th>`).join("")}</tr></thead><tbody>${lik}</tbody></table></div></div>
-    <div class="q"><label for="q5">5. Ist dir auf der Seite etwas aufgefallen, das deine Entscheidung beeinflusst hat?</label><textarea id="q5" name="q5">${esc(A.q5 || "")}</textarea></div>
-    ${z ? "" : `<div class="q"><span class="qt">6. Zu deiner Person</span>
-      <label for="d-alter" class="hint">Alter</label><select id="d-alter" name="d_alter"><option value="">Bitte wählen</option>${["unter 18","18–21","22–25","26–29","30–39","40 oder älter"].map(o => `<option ${A.d_alter === o ? "selected" : ""}>${o}</option>`).join("")}</select>
-      <label for="d-geschlecht" class="hint">Geschlecht</label><select id="d-geschlecht" name="d_geschlecht"><option value="">Bitte wählen</option>${["weiblich","männlich","divers","keine Angabe"].map(o => `<option ${A.d_geschlecht === o ? "selected" : ""}>${o}</option>`).join("")}</select>
-      <label for="d-status" class="hint">Tätigkeit</label><select id="d-status" name="d_status"><option value="">Bitte wählen</option>${["Studium","Ausbildung","Berufstätig","Sonstiges"].map(o => `<option ${A.d_status === o ? "selected" : ""}>${o}</option>`).join("")}</select>
-      <label for="d-reisen" class="hint">Wie oft buchst du Unterkünfte online?</label><select id="d-reisen" name="d_reisen"><option value="">Bitte wählen</option>${["Nie","Seltener als 1× im Jahr","1–2× im Jahr","3× im Jahr oder öfter"].map(o => `<option ${A.d_reisen === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>`}
-    <p class="err" id="err-q" hidden>Bitte beantworte die Fragen 1, 3 und 4.</p>
+    <div class="q"><label for="a1">Warum hast du dich für dieses Hotel entschieden?</label><textarea id="a1" name="a1">${esc(A.a1 || "")}</textarea></div>
+    <div class="q"><span class="qt">Wie bist du bei deiner Entscheidung vorgegangen? Wie sehr stimmst du den folgenden Aussagen zu?</span>
+      ${matrix(FB.a2, FB.zustimmung, S.ordA2, A)}</div>
+    <div class="q"><span class="qt">Wie wichtig waren dir bei deiner Wahl die folgenden Punkte?</span>
+      ${matrix(FB.b1, FB.wichtig, S.ordB1, A)}</div>
+    <div class="q"><span class="qt">Wie sehr stimmst du den folgenden Aussagen zu?</span>
+      ${matrix(FB.c1, FB.zustimmung, S.ordC1, A)}</div>
+    <div class="q"><span class="qt">Zu deiner Person</span>
+      <label for="d1" class="hint">Alter</label>${sel("d1", "d1_alter", FB.d1, A)}
+      <label for="d2" class="hint">Geschlecht</label>${sel("d2", "d2_geschlecht", FB.d2, A)}
+      <label for="d3" class="hint">Tätigkeit</label>${sel("d3", "d3_taetigkeit", FB.d3, A)}
+      <label for="d4" class="hint">In welchem Land lebst du?</label>${sel("d4", "d4_land", FB.d4, A)}</div>
+    <p class="err" id="err-q" hidden></p>
     <button class="cta pbtn" type="submit" data-log="absenden">Antworten absenden</button>
   </form></div></div>`;
 }
@@ -636,32 +663,41 @@ function dataset() {
   const views = S.log.filter(e => e.typ === "seite");
   const dwell = {};
   views.forEach((v, i) => { const next = views[i + 1] ? views[i + 1].t : (S.endT || Date.now() - S.start); dwell[v.ziel] = (dwell[v.ziel] || 0) + (next - v.t); });
+  const ersteListe = S.log.find(e => e.typ === "seite" && e.ziel === "liste");
+  const wahlen = S.log.filter(e => e.typ === "wahl");
+  const letzteWahl = wahlen[wahlen.length - 1];
   return {
-    code: S.id, gruppe: PARAMS.gruppe, persona: PARAMS.persona, variante: PARAMS.variante, zuordnung: PARAMS.zuordnung, reihenfolge: PARAMS.reihenfolge,
+    code: S.id, gruppe: PARAMS.gruppe, persona: PARAMS.persona, reihenfolge: PARAMS.reihenfolge,
     start: new Date(S.start).toISOString(), dauer_s: Math.round(((S.endT || Date.now() - S.start)) / 1000),
-    trigger_zuordnung: triggerOf,
+    zeit_bis_wahl_s: (ersteListe && letzteWahl) ? Math.round((letzteWahl.t - ersteListe.t) / 100) / 10 : "",
+    anzahl_wahlen: wahlen.length,
+    hinweise_je_hotel: triggerOf,
     reihenfolge_liste: ALL.map(h => h.id),
-    wahl: S.wahl, wahl_trigger: S.wahl ? (triggerOf[S.wahl] || "fuell") : null,
+    wahl: S.wahl, wahl_hinweise: S.wahl ? triggerOf[S.wahl] : null,
     geoeffnete_hotels: [...new Set(S.log.filter(e => e.typ === "seite" && e.ziel.startsWith("hotel-")).map(e => e.ziel.slice(6)))],
     verweildauer_ms: dwell,
+    reihenfolge_a2: S.ordA2 ? S.ordA2.map(i => FB.a2[i][0]) : [],
+    reihenfolge_b1: S.ordB1 ? S.ordB1.map(i => FB.b1[i][0]) : [],
+    reihenfolge_c1: S.ordC1 ? S.ordC1.map(i => FB.c1[i][0]) : [],
     antworten: S.antworten, protokoll: S.log
   };
 }
 /* Flache Zeile für das Blatt "Teilnahmen" */
 function zeile(status) {
   const d = dataset(), z = {
-    code: d.code, status, gruppe: d.gruppe, persona: d.persona, variante: d.variante, zuordnung: d.zuordnung, reihenfolge: d.reihenfolge,
-    start: d.start, dauer_s: d.dauer_s, letzte_seite: currentRoute(),
-    wahl: d.wahl || "", wahl_trigger: d.wahl_trigger || "",
+    code: d.code, status, gruppe: d.gruppe, persona: d.persona, reihenfolge: d.reihenfolge,
+    start: d.start, dauer_s: d.dauer_s, zeit_bis_wahl_s: d.zeit_bis_wahl_s, letzte_seite: currentRoute(),
+    wahl: d.wahl || "", wahl_hinweise: d.wahl_hinweise || "", anzahl_wahlen: d.anzahl_wahlen,
     geoeffnete_hotels: d.geoeffnete_hotels.join(", "), anzahl_geoeffnet: d.geoeffnete_hotels.length,
     anzahl_klicks: S.log.filter(e => e.typ !== "seite").length,
     anzahl_klicks_ohne_funktion: S.log.filter(e => e.typ === "klick_ohne_funktion").length,
     reihenfolge_liste: d.reihenfolge_liste.join(", "),
-    trigger_zuordnung: Object.entries(d.trigger_zuordnung).map(([h, t]) => h + "=" + t).join(", ")
+    hinweise_je_hotel: Object.entries(d.hinweise_je_hotel).map(([h, t]) => h + "=" + t).join(", "),
+    reihenfolge_a2: d.reihenfolge_a2.join(", "), reihenfolge_b1: d.reihenfolge_b1.join(", "), reihenfolge_c1: d.reihenfolge_c1.join(", ")
   };
   Object.entries(d.verweildauer_ms).forEach(([k, v]) => { z["vd_" + k + "_s"] = Math.round(v / 100) / 10; });
   const A = S.antworten || S.antworten_entwurf || {};
-  Object.entries(A).forEach(([k, v]) => { z["a_" + k.replace(/-/g, "_")] = v; });
+  Object.entries(A).forEach(([k, v]) => { z[k] = v; });
   return z;
 }
 /* Senden: bei jedem Seitenwechsel ein Zwischenstand, am Ende "abgeschlossen".
@@ -670,7 +706,7 @@ function sync(status, beimVerlassen) {
   if (!CONFIG.sheetUrl) return;
   S.gesendetBis = S.gesendetBis || 0;
   const neu = S.log.slice(S.gesendetBis).map((e, i) => ({ nr: S.gesendetBis + i + 1, ...e }));
-  const body = JSON.stringify({ teilnahme: zeile(status), klicks: neu.map(e => ({ code: S.id, nr: e.nr, t_ms: e.t, typ: e.typ, ziel: e.ziel, seite: e.seite, hotel: e.hotel || "", trigger: e.trigger || (e.hotel ? (triggerOf[e.hotel] || "fuell") : "") })) });
+  const body = JSON.stringify({ teilnahme: zeile(status), klicks: neu.map(e => ({ code: S.id, nr: e.nr, t_ms: e.t, typ: e.typ, ziel: e.ziel, seite: e.seite, hotel: e.hotel || "", trigger: e.trigger || (e.hotel ? triggerOf[e.hotel] : "") })) });
   S.gesendetBis = S.log.length; save();
   return fetch(CONFIG.sheetUrl, { method: "POST", mode: "no-cors", keepalive: !!beimVerlassen, headers: { "Content-Type": "text/plain;charset=utf-8" }, body })
     .then(() => { if (status === "abgeschlossen") { S.gesendet = true; save(); const el = document.getElementById("send-state"); if (el) el.textContent = "Übertragung bestätigt."; } })
@@ -719,7 +755,7 @@ document.addEventListener("click", e => {
     S.einwilligung = true; save(); go("liste"); return;
   }
   if (el.dataset.scroll) { const t = document.getElementById(el.dataset.scroll); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); log("klick", "tab:" + el.dataset.scroll); return; }
-  if (el.dataset.reserve) { S.wahl = el.dataset.reserve; log("wahl", S.wahl, { trigger: triggerOf[S.wahl] || "fuell" }); save(); go("fragen"); return; }
+  if (el.dataset.reserve) { S.wahl = el.dataset.reserve; log("wahl", S.wahl, { trigger: triggerOf[S.wahl] }); save(); go("fragen"); return; }
   if (el.dataset.go) { go(el.dataset.go); }
 });
 document.addEventListener("submit", e => {
@@ -727,12 +763,21 @@ document.addEventListener("submit", e => {
   e.preventDefault();
   const fd = new FormData(e.target), A = {};
   for (const [k, v] of fd.entries()) A[k] = typeof v === "string" ? v.trim() : v;
-  const ok = A.q1 && A.q3 && testOrder.every(t => A["att-" + t.id]);
-  if (!ok) { document.getElementById("err-q").hidden = false; document.getElementById("err-q").scrollIntoView({ block: "center" }); return; }
+  const fehlt = [];
+  if (!A.a1) fehlt.push("die Begründung");
+  const offenA2 = FB.a2.filter(([k]) => !A[k]), offenB1 = FB.b1.filter(([k]) => !A[k]), offenC1 = FB.c1.filter(([k]) => !A[k]);
+  const offenD = ["d1_alter", "d2_geschlecht", "d3_taetigkeit", "d4_land"].filter(k => !A[k]);
+  if (offenA2.length || offenB1.length || offenC1.length) fehlt.push("alle Aussagen in den Tabellen");
+  if (offenD.length) fehlt.push("die Angaben zu deiner Person");
+  document.querySelectorAll("#qform tr[data-item]").forEach(tr => tr.classList.toggle("missing", [...offenA2, ...offenB1, ...offenC1].some(([k]) => k === tr.dataset.item)));
+  document.querySelectorAll("#qform select").forEach(el => el.classList.toggle("missing", !el.value));
+  if (fehlt.length) { const el = document.getElementById("err-q"); el.textContent = "Bitte beantworte noch " + fehlt.join(", ") + "."; el.hidden = false; el.scrollIntoView({ block: "center" }); return; }
   S.antworten = A; S.endT = Date.now() - S.start; log("abgesendet", S.wahl); save(); go("danke");
 });
 document.addEventListener("input", e => {
   const f = e.target.closest("#qform"); if (!f) return;
+  const row = e.target.closest("tr.missing"); if (row) row.classList.remove("missing");
+  if (e.target.matches("select.missing") && e.target.value) e.target.classList.remove("missing");
   const fd = new FormData(f), A = {}; for (const [k, v] of fd.entries()) A[k] = v;
   S.antworten_entwurf = A; try { sessionStorage.setItem("compass-state", JSON.stringify(S)); } catch (err) {}
 });

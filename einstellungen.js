@@ -7,8 +7,8 @@
    - Nur die Werte ändern: Text zwischen "…", Zahlen ohne Anführungszeichen.
    - Kommas am Zeilenende und Klammern { } [ ] stehen lassen.
    - Dezimalzahlen mit Punkt schreiben (8.6, nicht 8,6).
-   - Bilder: Dateien in den Ordner "bilder" hochladen und beim Hotel eintragen, z. B.
-       bilder: ["bilder/tropic-1.jpg", "bilder/tropic-2.jpg", "bilder/tropic-3.jpg", "bilder/tropic-4.jpg", "bilder/tropic-5.jpg"],
+   - Bilder: Dateien direkt ins Repository (neben index.html) hochladen und beim Hotel eintragen, z. B.
+       bilder: ["tropic-1.jpg", "tropic-2.jpg", "tropic-3.jpg", "tropic-4.jpg", "tropic-5.jpg"],
      Reihenfolge: 1 = Foto in der Liste und großes Galeriefoto, 2–5 = kleine Galeriefotos.
      Ohne Eintrag werden gezeichnete Platzhalter angezeigt.
    - Hinweise (Trigger) pro Hotel bei "hinweise" eintragen. Möglich sind:
@@ -54,31 +54,31 @@ window.CONFIG = {
   },
   // Alle 7 Hotels sind gleichwertig. Preise gelten für den gesamten Aufenthalt (3 Nächte).
   hotels: [
-    { id: "tropic-sands", bilder: ["bilder/tropic-sands-1.jpg", "bilder/tropic-sands-2.jpg", "bilder/tropic-sands-3.jpg", "bilder/tropic-sands-4.jpg", "bilder/tropic-sands-5.jpg"],
+    { id: "tropic-sands", bilder: ["tropic-sands-1.jpg", "tropic-sands-2.jpg", "tropic-sands-3.jpg", "tropic-sands-4.jpg", "tropic-sands-5.jpg"],
        name: "Tropic Sands Villas", sterne: 4, entfernung: "1,2 km vom Zentrum", note: 8.6, bewertungen: 1084, preis: 189, seed: 11,
       hinweise: ["anker"], preisVorher: 249,
       sub: [8.7, 8.6, 8.5, 8.4], zitat: "Tolle Lage, das Personal war super freundlich und das Frühstück reichhaltig." },
-    { id: "palm-haven", bilder: ["bilder/palm-haven-1.jpg", "bilder/palm-haven-2.jpg", "bilder/palm-haven-3.jpg", "bilder/palm-haven-4.jpg", "bilder/palm-haven-5.jpg"],
+    { id: "palm-haven", bilder: ["palm-haven-1.jpg", "palm-haven-2.jpg", "palm-haven-3.jpg", "palm-haven-4.jpg", "palm-haven-5.jpg"],
        name: "Palm Haven Resort", sterne: 4, entfernung: "1,1 km vom Zentrum", note: 8.4, bewertungen: 1126, preis: 174, seed: 23,
       hinweise: ["knappheit"], zimmerFrei: 2,
       sub: [8.5, 8.4, 8.3, 8.5], zitat: "Ruhige Anlage mit schönem Pool, nur ein paar Minuten zu Fuß zum Strand." },
-    { id: "coral-bay", bilder: ["bilder/coral-bay-1.jpg", "bilder/coral-bay-2.jpg", "bilder/coral-bay-3.jpg", "bilder/coral-bay-4.jpg", "bilder/coral-bay-5.jpg"],
+    { id: "coral-bay", bilder: ["coral-bay-1.jpg", "coral-bay-2.jpg", "coral-bay-3.jpg", "coral-bay-4.jpg", "coral-bay-5.jpg"],
        name: "Coral Bay Retreat", sterne: 4, entfernung: "1,4 km vom Zentrum", note: 8.8, bewertungen: 962, preis: 212, seed: 37,
       hinweise: [],
       sub: [8.9, 8.8, 8.6, 8.5], zitat: "Saubere Zimmer, guter Kaffee und ein sehr hilfsbereites Team an der Rezeption." },
-    { id: "bali-breeze", bilder: ["bilder/bali-breeze-1.jpg", "bilder/bali-breeze-2.jpg", "bilder/bali-breeze-3.jpg", "bilder/bali-breeze-4.jpg", "bilder/bali-breeze-5.jpg"],
+    { id: "bali-breeze", bilder: ["bali-breeze-1.jpg", "bali-breeze-2.jpg", "bali-breeze-3.jpg", "bali-breeze-4.jpg", "bali-breeze-5.jpg"],
        name: "Bali Breeze Hotel", sterne: 3, entfernung: "1,6 km vom Zentrum", note: 8.2, bewertungen: 1309, preis: 159, seed: 41,
       hinweise: ["socialproof"], gebucht: 9,
       sub: [8.3, 8.4, 8.0, 8.6], zitat: "Gemütliches Zimmer, toller Garten und abends angenehm ruhig." },
-    { id: "ocean-pearl", bilder: ["bilder/ocean-pearl-1.jpg", "bilder/ocean-pearl-2.jpg", "bilder/ocean-pearl-3.jpg", "bilder/ocean-pearl-4.jpg", "bilder/ocean-pearl-5.jpg"],
+    { id: "ocean-pearl", bilder: ["ocean-pearl-1.jpg", "ocean-pearl-2.jpg", "ocean-pearl-3.jpg", "ocean-pearl-4.jpg", "ocean-pearl-5.jpg"],
        name: "Ocean Pearl Suites", sterne: 4, entfernung: "0,8 km vom Zentrum", note: 8.5, bewertungen: 874, preis: 198, seed: 53,
       hinweise: ["anker", "knappheit"], preisVorher: 259, zimmerFrei: 1,
       sub: [8.6, 8.5, 8.4, 8.3], zitat: "Großes Zimmer, sehr zentral, abends kann es etwas lauter sein." },
-    { id: "legian-garden", bilder: ["bilder/legian-garden-1.jpg", "bilder/legian-garden-2.jpg", "bilder/legian-garden-3.jpg", "bilder/legian-garden-4.jpg", "bilder/legian-garden-5.jpg"],
+    { id: "legian-garden", bilder: ["legian-garden-1.jpg", "legian-garden-2.jpg", "legian-garden-3.jpg", "legian-garden-4.jpg", "legian-garden-5.jpg"],
        name: "Legian Garden Stay", sterne: 3, entfernung: "2,1 km vom Zentrum", note: 8.0, bewertungen: 803, preis: 165, seed: 61,
       hinweise: [],
       sub: [8.1, 8.2, 7.8, 8.3], zitat: "Netter Garten, etwas weiter weg vom Trubel, gutes Preis-Leistungs-Verhältnis." },
-    { id: "sunset-lagoon", bilder: ["bilder/sunset-lagoon-1.jpg", "bilder/sunset-lagoon-2.jpg", "bilder/sunset-lagoon-3.jpg", "bilder/sunset-lagoon-4.jpg", "bilder/sunset-lagoon-5.jpg"],
+    { id: "sunset-lagoon", bilder: ["sunset-lagoon-1.jpg", "sunset-lagoon-2.jpg", "sunset-lagoon-3.jpg", "sunset-lagoon-4.jpg", "sunset-lagoon-5.jpg"],
        name: "Sunset Lagoon Villas", sterne: 4, entfernung: "1,0 km vom Zentrum", note: 8.9, bewertungen: 3482, preis: 229, seed: 71,
       hinweise: ["beliebt"],
       sub: [9.0, 8.9, 8.8, 8.6], zitat: "Wunderschöne Anlage, man fühlt sich sofort wohl. Jeden Cent wert." }
